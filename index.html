@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBT Ujian - Informatika IX</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tailwind Config for Custom Colors -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfeff',
+                            100: '#cffafe',
+                            500: '#06b6d4', // Cyan 500
+                            600: '#0891b2', // Cyan 600
+                            700: '#0e7490', // Cyan 700
+                            900: '#164e63', // Cyan 900
+                            blue: '#1d4ed8' // Blue 700
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Anti-Cheat & Global Styles */
+        body {
+            user-select: none; /* Prevent text selection */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            background: linear-gradient(135deg, #0891b2 0%, #1d4ed8 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Hide Number Input Arrows */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+        /* Modal Overlay fix */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body oncontextmenu="return false;" oncopy="return false;" oncut="return false;" onpaste="return false;">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        // --- KONFIGURASI UJIAN ---
+        const EXAM_CONFIG = {
+            mapel: "INFORMATIKA",
+            jenisUjian: "ULANGAN HARIAN BAB 1",
+            kelas: "IX",
+            durasiMenit: 60,
+            storageKey: "cbt_INFORMATIKA_IX",
+            googleSheetUrl: "https://script.google.com/macros/s/AKfycbzo72RQjol1lsNcPGid71sL9UXUKvdlRD18tHbtmo76CtUM7XFoJnhHCQIxZwj58q57/exec" // GANTI DENGAN URL WEB APP GS ANDA
+        };
+
+        // --- DATA SOAL (Diambil dari PDF) ---
+        const rawQuestionsData = [
+            {
+                id: 1, type: 'mc',
+                text: "Memecah masalah yang rumit menjadi bagian-bagian yang lebih kecil dan sederhana agar mudah diselesaikan disebut...",
+                options: ["Abstraksi", "Dekomposisi", "Pengenalan Pola", "Penyusunan Algoritma"],
+                answer: "Dekomposisi"
+            },
+            {
+                id: 2, type: 'mc',
+                text: "Berfokus pada informasi yang penting saja dan mengabaikan detail yang tidak perlu dalam suatu permasalahan disebut...",
+                options: ["Abstraksi", "Dekomposisi", "Pengenalan Pola", "Algoritma"],
+                answer: "Abstraksi"
+            },
+            {
+                id: 3, type: 'mc',
+                text: "Mencari kesamaan bentuk, ciri, atau cara dari masalah-masalah sebelumnya untuk menyelesaikan masalah yang baru disebut...",
+                options: ["Abstraksi", "Dekomposisi", "Pengenalan Pola", "Algoritma"],
+                answer: "Pengenalan Pola"
+            },
+            {
+                id: 4, type: 'mc',
+                text: "Menyusun langkah-langkah yang urut, logis, dan jelas untuk menyelesaikan masalah secara konsisten disebut...",
+                options: ["Abstraksi", "Dekomposisi", "Pengenalan Pola", "Penyusunan Algoritma"],
+                answer: "Penyusunan Algoritma"
+            },
+            {
+                id: 5, type: 'mc',
+                text: "Struktur data yang bentuknya bertingkat atau memiliki kedudukan dari atas ke bawah (hierarki) disebut struktur data...",
+                options: ["Tree (Pohon)", "Graph (Graf)", "Baris", "Kolom"],
+                answer: "Tree (Pohon)"
+            },
+            {
+                id: 6, type: 'mc',
+                text: "Dalam struktur data tree, titik paling atas yang menjadi titik awal dari semua cabang disebut...",
+                options: ["Daun (Leaf)", "Cabang (Branch)", "Anak (Child)", "Akar (Root)"],
+                answer: "Akar (Root)"
+            },
+            {
+                id: 7, type: 'mc',
+                text: "Contoh penggunaan struktur data tree di kehidupan sehari-hari adalah...",
+                options: ["Peta jalan raya", "Rute pesawat terbang", "Silsilah keluarga", "Jaringan pertemanan"],
+                answer: "Silsilah keluarga"
+            },
+            {
+                id: 8, type: 'mc',
+                text: "Struktur data untuk data yang saling terhubung satu sama lain secara bebas tanpa ada tingkatan atasan-bawahan disebut...",
+                options: ["Tree (Pohon)", "Graph (Graf)", "Tabel", "Akar"],
+                answer: "Graph (Graf)"
+            },
+            {
+                id: 9, type: 'mc',
+                text: "Pada struktur data graph, garis atau jalur yang menghubungkan satu titik dengan titik lainnya disebut...",
+                options: ["Simpul", "Akar", "Daun", "Ruas"],
+                answer: "Ruas"
+            },
+            {
+                id: 10, type: 'mc',
+                text: "Kumpulan data yang sudah tersusun sangat rapi dalam bentuk baris dan kolom disebut...",
+                options: ["Data acak", "Data terstruktur", "Data sekunder", "Data primer"],
+                answer: "Data terstruktur"
+            },
+            {
+                id: 11, type: 'mc',
+                text: "Menyajikan data dalam bentuk gambar, grafik, atau diagram agar mudah dibaca disebut...",
+                options: ["Visualisasi data", "Pengumpulan data", "Pembersihan data", "Eksplorasi data"],
+                answer: "Visualisasi data"
+            },
+            {
+                id: 12, type: 'mc',
+                text: "Langkah pertama yang harus dilakukan saat kita ingin menganalisis suatu data adalah...",
+                options: ["Membuat diagram batang", "Membersihkan data dari kesalahan", "Menentukan tujuan analisis", "Mengumpulkan semua jenis data"],
+                answer: "Menentukan tujuan analisis"
+            },
+            {
+                id: 13, type: 'mc',
+                text: "Budi ingin membuat mi instan. Ia memasak air, memasukkan mi, memasukkan bumbu, lalu menuangkannya ke mangkuk sesuai urutan di kemasan. Urutan ini dalam berpikir komputasional mencerminkan konsep...",
+                options: ["Abstraksi", "Dekomposisi", "Pengenalan Pola", "Penyusunan Algoritma"],
+                answer: "Penyusunan Algoritma"
+            },
+            {
+                id: 14, type: 'mc',
+                text: "Saat mencari informasi tentang \"kucing\" di internet, Dina mengabaikan hasil pencarian yang membahas tentang \"makanan anjing\". Sikap Dina ini mencerminkan konsep...",
+                options: ["Abstraksi", "Dekomposisi", "Pengenalan Pola", "Algoritma"],
+                answer: "Abstraksi"
+            },
+            {
+                id: 15, type: 'mc',
+                text: "Dalam bagan struktur OSIS, Ketua OSIS berada di paling atas, di bawahnya terdapat Sekretaris dan Bendahara. Kedudukan Sekretaris terhadap Ketua OSIS dalam struktur tree disebut sebagai...",
+                options: ["Root (Akar)", "Child (Anak / Bawahan)", "Parent (Atasan)", "Leaf (Daun paling ujung)"],
+                answer: "Child (Anak / Bawahan)"
+            },
+            {
+                id: 16, type: 'mc',
+                text: "Jika kita melihat gambar rute Transjakarta, di mana halte-halte saling terhubung oleh jalur bus yang meliuk-liuk di peta, struktur data yang paling cocok untuk menggambarkannya adalah...",
+                options: ["Tree", "Graph", "Array", "Hierarki bertingkat"],
+                answer: "Graph"
+            },
+            {
+                id: 17, type: 'mc',
+                text: "Data berat badan siswa yang didapatkan ketua kelas dengan cara menimbang dan mencatat satu per satu temannya secara langsung disebut sebagai data dari sumber...",
+                options: ["Sekunder", "Primer", "Internet", "Televisi"],
+                answer: "Primer"
+            },
+            {
+                id: 18, type: 'mc',
+                text: "Setelah kuesioner terkumpul, Rina melihat ada beberapa teman yang mengisi hobi dengan tulisan \"Bermain Bola\", ada pula yang menulis \"Sepak Bola\". Rina merapikannya dengan mengubah semua tulisan menjadi \"Sepak Bola\". Tahapan analisis data yang dilakukan Rina disebut...",
+                options: ["Menyiapkan dan membersihkan data", "Mengeksplorasi data", "Memvisualisasikan data", "Menentukan tujuan analisis"],
+                answer: "Menyiapkan dan membersihkan data"
+            },
+            {
+                id: 19, type: 'mc',
+                text: "Tujuan utama dari mengubah tabel yang berisi ratusan angka menjadi sebuah diagram batang berwarna adalah agar...",
+                options: ["Datanya terlihat lebih rumit dan panjang", "Data tersebut aman dari pencurian", "Pola dan perbandingan data lebih mudah dibaca dan dipahami", "Sebagian data yang jelek bisa disembunyikan"],
+                answer: "Pola dan perbandingan data lebih mudah dibaca dan dipahami"
+            },
+            {
+                id: 20, type: 'mc',
+                text: "Seorang montir menyadari bahwa dari 5 motor mogok yang ia tangani bulan ini, semuanya memiliki ciri-ciri busi yang menghitam. Ia pun langsung mengecek busi pada motor mogok keenam yang baru datang. Konsep berpikir yang diterapkan montir adalah...",
+                options: ["Abstraksi", "Dekomposisi", "Pengenalan Pola", "Penyusunan Algoritma"],
+                answer: "Pengenalan Pola"
+            },
+            {
+                id: 21, type: 'mc',
+                text: "Mengapa struktur tree (pohon) kurang tepat digunakan untuk memetakan jaringan pertemanan di media sosial seperti Instagram atau Facebook?",
+                options: ["Karena pertemanan di media sosial jumlahnya sangat sedikit.", "Karena tree mengharuskan adanya atasan dan bawahan, sedangkan pertemanan posisinya setara dan saling terhubung bebas.", "Karena tree hanya bisa digunakan untuk menyimpan angka atau nilai ujian siswa.", "Karena pada tree tidak memiliki titik atau simpul untuk menghubungkan orang."],
+                answer: "Karena tree mengharuskan adanya atasan dan bawahan, sedangkan pertemanan posisinya setara dan saling terhubung bebas."
+            },
+            {
+                id: 22, type: 'mc',
+                text: "Sebuah tim kerja diminta membuat acara pentas seni sekolah. Ketua panitia membagi acara besar tersebut menjadi seksi konsumsi, seksi acara, dan seksi keamanan. Setelah itu, ia menghapus ide pertunjukan sirkus karena dirasa tidak relevan dan menghabiskan dana. Dalam kasus ini, ketua panitia menerapkan dua pilar berpikir komputasional secara berurutan, yaitu...",
+                options: ["Dekomposisi lalu Abstraksi", "Abstraksi lalu Pengenalan Pola", "Pengenalan Pola lalu Algoritma", "Algoritma lalu Dekomposisi"],
+                answer: "Dekomposisi lalu Abstraksi"
+            },
+            {
+                id: 23, type: 'mc',
+                text: "Andi ditugaskan menganalisis data penjualan buku bulanan. Ia sudah berhasil menyelesaikan tahap 1 (menentukan tujuan), tahap 2 (mengumpulkan data kuitansi), dan tahap 3 (membersihkan data dari kesalahan ketik). Langkah logis selanjutnya yang harus Andi lakukan berdasarkan urutan tahap analisis data terstruktur adalah...",
+                options: ["Langsung mengambil keputusan untuk penjualan bulan depan.", "Mengeksplorasi dan memahami karakteristik data buku yang sudah rapi tersebut.", "Membuat laporan akhir untuk segera diserahkan kepada guru.", "Kembali mengumpulkan data primer agar jumlahnya lebih banyak."],
+                answer: "Mengeksplorasi dan memahami karakteristik data buku yang sudah rapi tersebut."
+            },
+            {
+                id: 24, type: 'mc',
+                text: "Dalam sebuah struktur data graph yang memodelkan rute wilayah, jika terdapat sebuah desa yang terisolasi dan belum memiliki jalan raya penghubung ke desa manapun, maka desa tersebut akan digambarkan sebagai...",
+                options: ["Simpul yang memiliki ruas berjumlah sangat banyak.", "Simpul yang berdiri sendiri tanpa ada ruas (garis) yang menghubungkannya.", "Ruas yang panjang namun tidak memiliki titik ujung.", "Akar (root) dari semua desa yang ada di wilayah tersebut."],
+                answer: "Simpul yang berdiri sendiri tanpa ada ruas (garis) yang menghubungkannya."
+            },
+            {
+                id: 25, type: 'mc',
+                text: "Dalam menyusun penyelesaian masalah komputasional, tahap abstraksi seringkali dilakukan sebelum menyusun algoritma. Alasan paling logis dari tindakan ini adalah...",
+                options: ["Untuk membuat langkah penyelesaian menjadi lebih panjang dan terlihat canggih.", "Untuk mencegah informasi yang tidak relevan masuk dan mengganggu urutan langkah penyelesaian masalah.", "Untuk mencari apakah ada orang lain yang pernah memecahkan masalah tersebut sebelumnya.", "Untuk memecah masalah besar menjadi bagian kecil agar mudah dibagi ke banyak orang."],
+                answer: "Untuk mencegah informasi yang tidak relevan masuk dan mengganggu urutan langkah penyelesaian masalah."
+            }
+        ];
+
+        // --- HELPER ALGORITHMS ---
+        const shuffleArray = (array) => {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        };
+
+        const formatTime = (seconds) => {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            if (h > 0) return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        };
+
+        // --- COMPONENTS ---
+        const Icon = ({ name, className = "w-6 h-6" }) => {
+            const icons = {
+                user: <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />,
+                school: <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />,
+                calendar: <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />,
+                play: <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />,
+                clock: <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />,
+                alert: <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />,
+                check: <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />,
+                chevronLeft: <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />,
+                chevronRight: <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            };
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                    {icons[name]}
+                </svg>
+            );
+        };
+
+        // Static Modal Components outside App to prevent flicker re-renders
+        const AlertModal = ({ show, title, message, onOk, isDanger }) => {
+            if (!show) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
+                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full animate-[fade-in_0.2s_ease-out]">
+                        <div className={`flex items-center gap-3 mb-4 ${isDanger ? 'text-red-600' : 'text-amber-500'}`}>
+                            <Icon name="alert" className="w-8 h-8" />
+                            <h3 className="text-xl font-bold">{title}</h3>
+                        </div>
+                        <p className="text-gray-600 mb-6">{message}</p>
+                        <button onClick={onOk} className={`w-full py-2.5 rounded-lg text-white font-semibold transition-colors ${isDanger ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-600 hover:bg-brand-700'}`}>
+                            Mengerti
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const ConfirmModal = ({ show, title, message, onConfirm, onCancel }) => {
+            if (!show) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay">
+                    <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full animate-[fade-in_0.2s_ease-out]">
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">{title}</h3>
+                        <p className="text-gray-600 mb-6">{message}</p>
+                        <div className="flex gap-3 justify-end">
+                            <button onClick={onCancel} className="px-4 py-2 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 font-medium transition-colors">Batal</button>
+                            <button onClick={onConfirm} className="px-4 py-2 rounded-lg text-white bg-green-600 hover:bg-green-700 font-medium transition-colors">Ya, Kumpulkan</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MAIN APP COMPONENT ---
+        const App = () => {
+            // App States: 'login', 'resume_prompt', 'exam', 'submitting', 'result'
+            const [appState, setAppState] = useState('login');
+            
+            // User Data
+            const [studentData, setStudentData] = useState({ nama: '', kelas: '', tanggal: new Date().toISOString().split('T')[0] });
+            
+            // Exam Data
+            const [questions, setQuestions] = useState([]);
+            const [answers, setAnswers] = useState({}); // { questionIndex: answerValue }
+            const [currentQIndex, setCurrentQIndex] = useState(0);
+            const [timeLeft, setTimeLeft] = useState(EXAM_CONFIG.durasiMenit * 60);
+            const [violations, setViolations] = useState(0);
+            
+            // Result Data
+            const [score, setScore] = useState(0);
+            const [submitMsg, setSubmitMsg] = useState('');
+
+            // Modals State
+            const [alertModal, setAlertModal] = useState({ show: false, title: '', message: '', isDanger: false });
+            const [confirmModal, setConfirmModal] = useState({ show: false, title: '', message: '' });
+
+            // Refs
+            const timerRef = useRef(null);
+            const isSubmittingRef = useRef(false);
+
+            // 1. Initial check for saved session
+            useEffect(() => {
+                const savedData = localStorage.getItem(EXAM_CONFIG.storageKey);
+                if (savedData) {
+                    setAppState('resume_prompt');
+                }
+            }, []);
+
+            // 2. Timer and Auto-save effect
+            useEffect(() => {
+                if (appState === 'exam') {
+                    // Start Timer
+                    timerRef.current = setInterval(() => {
+                        setTimeLeft((prev) => {
+                            if (prev <= 1) {
+                                clearInterval(timerRef.current);
+                                handleAutoSubmit("Waktu ujian telah habis!");
+                                return 0;
+                            }
+                            return prev - 1;
+                        });
+                    }, 1000);
+
+                    // Anti-Cheat Events
+                    const handleVisibilityChange = () => {
+                        if (document.hidden && !isSubmittingRef.current) handleViolation("Pindah Tab/Aplikasi");
+                    };
+                    const handleFullscreenChange = () => {
+                        if (!document.fullscreenElement && !isSubmittingRef.current) handleViolation("Keluar dari Fullscreen");
+                    };
+                    const preventKeys = (e) => {
+                        // Prevent F12, Ctrl+Shift+I, Ctrl+C, etc.
+                        if (e.key === 'F12' || (e.ctrlKey && ['c', 'v', 'x', 'i', 'p', 'u'].includes(e.key.toLowerCase()))) {
+                            e.preventDefault();
+                        }
+                    };
+
+                    document.addEventListener("visibilitychange", handleVisibilityChange);
+                    document.addEventListener("fullscreenchange", handleFullscreenChange);
+                    document.addEventListener("keydown", preventKeys);
+
+                    return () => {
+                        clearInterval(timerRef.current);
+                        document.removeEventListener("visibilitychange", handleVisibilityChange);
+                        document.removeEventListener("fullscreenchange", handleFullscreenChange);
+                        document.removeEventListener("keydown", preventKeys);
+                    };
+                }
+            }, [appState]);
+
+            // Auto-save whenever critical exam state changes
+            useEffect(() => {
+                if (appState === 'exam' && questions.length > 0) {
+                    const saveObj = { studentData, questions, answers, timeLeft, violations };
+                    localStorage.setItem(EXAM_CONFIG.storageKey, JSON.stringify(saveObj));
+                }
+            }, [answers, currentQIndex, timeLeft, violations, questions, appState, studentData]);
+
+            // --- EXAM CONTROL HANDLERS ---
+            
+            const prepareNewExam = () => {
+                // Shuffle questions and their options
+                const shuffledQs = shuffleArray(rawQuestionsData).map(q => {
+                    let newQ = { ...q };
+                    if (newQ.type === 'mc') {
+                        newQ.options = shuffleArray(newQ.options);
+                    }
+                    return newQ;
+                });
+                setQuestions(shuffledQs);
+                setAnswers({});
+                setCurrentQIndex(0);
+                setTimeLeft(EXAM_CONFIG.durasiMenit * 60);
+                setViolations(0);
+            };
+
+            const startExam = async () => {
+                if (!studentData.nama || !studentData.kelas) {
+                    setAlertModal({ show: true, title: "Data Belum Lengkap", message: "Harap isi Nama dan Kelas terlebih dahulu." });
+                    return;
+                }
+                
+                try {
+                    if (document.documentElement.requestFullscreen) {
+                        await document.documentElement.requestFullscreen();
+                    }
+                } catch (e) {
+                    console.log("Fullscreen request failed", e);
+                }
+                
+                prepareNewExam();
+                setAppState('exam');
+            };
+
+            const resumeExam = async () => {
+                const saved = JSON.parse(localStorage.getItem(EXAM_CONFIG.storageKey));
+                if (saved) {
+                    try {
+                        if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+                    } catch (e) {}
+                    
+                    setStudentData(saved.studentData);
+                    setQuestions(saved.questions);
+                    setAnswers(saved.answers);
+                    setTimeLeft(saved.timeLeft);
+                    setViolations(saved.violations || 0);
+                    setAppState('exam');
+                } else {
+                    setAppState('login');
+                }
+            };
+
+            const discardSavedExam = () => {
+                localStorage.removeItem(EXAM_CONFIG.storageKey);
+                setAppState('login');
+            };
+
+            const handleViolation = (reason) => {
+                setViolations(prev => {
+                    const newV = prev + 1;
+                    if (newV === 1) {
+                        setAlertModal({ 
+                            show: true, 
+                            title: "PERINGATAN PELANGGARAN!", 
+                            message: `Terdeteksi aktivitas mencurigakan (${reason}). Ini adalah peringatan pertama. Jika diulangi, ujian akan otomatis dihentikan dan disubmit.`,
+                            isDanger: true
+                        });
+                    } else if (newV >= 2) {
+                        handleAutoSubmit(`Didiskualifikasi: ${reason} (Pelanggaran ke-${newV})`);
+                    }
+                    return newV;
+                });
+            };
+
+            // --- SCORING & SUBMISSION ---
+            const handleAutoSubmit = (reasonMsg) => {
+                if (isSubmittingRef.current) return;
+                isSubmittingRef.current = true;
+                setAlertModal({ show: false }); // close any open alert
+                setConfirmModal({ show: false });
+                processSubmission(reasonMsg);
+            };
+
+            const handleManualSubmit = () => {
+                const answeredCount = Object.keys(answers).length;
+                const totalQ = questions.length;
+                let msg = `Anda telah menjawab ${answeredCount} dari ${totalQ} soal.`;
+                if (answeredCount < totalQ) msg += " Masih ada soal yang KOSONG.";
+                msg += " Yakin ingin mengumpulkan sekarang?";
+                
+                setConfirmModal({ show: true, title: "Konfirmasi Pengumpulan", message: msg });
+            };
+
+            const confirmSubmit = () => {
+                setConfirmModal({ show: false });
+                if (isSubmittingRef.current) return;
+                isSubmittingRef.current = true;
+                processSubmission("Selesai Normal");
+            };
+
+            const processSubmission = async (keterangan) => {
+                clearInterval(timerRef.current);
+                setAppState('submitting');
+                
+                if (document.fullscreenElement) {
+                    try { await document.exitFullscreen(); } catch (e) {}
+                }
+
+                // Calculate Score & Detail
+                let correctCount = 0;
+                let detailsArray = [];
+
+                // To ensure details are ordered by original ID, we map through rawQuestionsData
+                rawQuestionsData.forEach(rawQ => {
+                    // Find if this question was presented and answered in current shuffled state
+                    const shuffledIndex = questions.findIndex(q => q.id === rawQ.id);
+                    const userAnswer = answers[shuffledIndex];
+                    
+                    let statusStr = "";
+                    if (userAnswer === undefined || userAnswer === "") {
+                        statusStr = `Soal ${rawQ.id}: KOSONG`;
+                    } else if (userAnswer === rawQ.answer) {
+                        correctCount++;
+                        statusStr = `Soal ${rawQ.id}: BENAR`;
+                    } else {
+                        statusStr = `Soal ${rawQ.id}: SALAH (Pilih: ${userAnswer}, Kunci: ${rawQ.answer})`;
+                    }
+                    detailsArray.push(statusStr);
+                });
+
+                const finalScore = Math.round((correctCount / rawQuestionsData.length) * 100);
+                const rincianJawabanStr = detailsArray.join(" | ");
+
+                setScore(finalScore);
+
+                // Prepare Payload
+                const payload = {
+                    nama: studentData.nama,
+                    kelas: studentData.kelas,
+                    tanggal: studentData.tanggal,
+                    skor: finalScore,
+                    pelanggaran: violations,
+                    keterangan: keterangan,
+                    rincianJawaban: rincianJawabanStr
+                };
+
+                // Send to GS
+                try {
+                    await fetch(EXAM_CONFIG.googleSheetUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify(payload)
+                    });
+                    setSubmitMsg("Data berhasil dikirim ke server.");
+                } catch (error) {
+                    console.error("Submission error", error);
+                    setSubmitMsg("Data nilai tersimpan lokal. Gagal terhubung ke server.");
+                }
+
+                localStorage.removeItem(EXAM_CONFIG.storageKey);
+                setAppState('result');
+                isSubmittingRef.current = false;
+            };
+
+            // --- RENDER VIEWS ---
+
+            const renderLogin = () => (
+                <div className="flex items-center justify-center min-h-screen p-4">
+                    <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 max-w-md w-full border border-white/20 text-white">
+                        <div className="text-center mb-8">
+                            <h1 className="text-3xl font-extrabold mb-2 tracking-tight">{EXAM_CONFIG.mapel}</h1>
+                            <p className="text-brand-100 font-medium">{EXAM_CONFIG.jenisUjian} • KELAS {EXAM_CONFIG.kelas}</p>
+                        </div>
+                        <div className="space-y-5">
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-brand-50 flex items-center gap-2"><Icon name="user" className="w-4 h-4"/> Nama Lengkap</label>
+                                <input type="text" value={studentData.nama} onChange={e => setStudentData({...studentData, nama: e.target.value.toUpperCase()})} className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 focus:border-white focus:ring-2 focus:ring-white/50 text-white placeholder-white/50 outline-none transition-all" placeholder="Ketik nama lengkap..." />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-brand-50 flex items-center gap-2"><Icon name="school" className="w-4 h-4"/> Kelas</label>
+                                <input type="text" value={studentData.kelas} onChange={e => setStudentData({...studentData, kelas: e.target.value.toUpperCase()})} className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 focus:border-white focus:ring-2 focus:ring-white/50 text-white placeholder-white/50 outline-none transition-all" placeholder="Contoh: IX A" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold mb-1 text-brand-50 flex items-center gap-2"><Icon name="calendar" className="w-4 h-4"/> Tanggal Ujian</label>
+                                <input type="date" value={studentData.tanggal} onChange={e => setStudentData({...studentData, tanggal: e.target.value})} className="w-full px-4 py-3 rounded-xl bg-white/20 border border-white/30 focus:border-white focus:ring-2 focus:ring-white/50 text-white outline-none transition-all [color-scheme:dark]" />
+                            </div>
+                            <button onClick={startExam} className="w-full mt-4 bg-white text-brand-700 hover:bg-brand-50 font-bold py-3.5 rounded-xl shadow-lg transition-transform transform hover:scale-[1.02] active:scale-95 flex justify-center items-center gap-2">
+                                <Icon name="play" /> Mulai Ujian
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const renderResumePrompt = () => (
+                <div className="flex items-center justify-center min-h-screen p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                        <div className="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Icon name="clock" className="w-8 h-8" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Sesi Tersimpan Ditemukan!</h2>
+                        <p className="text-gray-600 mb-8">Sistem mendeteksi ada ujian yang belum diselesaikan sebelumnya. Apakah Anda ingin melanjutkan progres tersebut?</p>
+                        <div className="space-y-3">
+                            <button onClick={resumeExam} className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 rounded-xl transition-colors">Lanjutkan Ujian</button>
+                            <button onClick={discardSavedExam} className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-colors">Mulai Ulang (Hapus Progres)</button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const renderExam = () => {
+                const currentQ = questions[currentQIndex];
+                if (!currentQ) return null;
+
+                return (
+                    <div className="min-h-screen flex flex-col bg-gray-50 text-gray-800">
+                        {/* Header */}
+                        <header className="bg-white shadow-sm sticky top-0 z-10 px-4 md:px-8 py-4 flex justify-between items-center">
+                            <div>
+                                <h1 className="font-bold text-lg md:text-xl text-brand-700 leading-tight">{EXAM_CONFIG.mapel}</h1>
+                                <p className="text-xs md:text-sm text-gray-500 font-medium">{studentData.nama} • {studentData.kelas}</p>
+                            </div>
+                            <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-mono text-lg md:text-xl font-bold shadow-inner ${timeLeft < 300 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-brand-50 text-brand-700'}`}>
+                                <Icon name="clock" className="w-5 h-5" />
+                                {formatTime(timeLeft)}
+                            </div>
+                        </header>
+
+                        {/* Main Content Area */}
+                        <main className="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto p-4 gap-4 md:gap-6 md:p-6 overflow-hidden">
+                            
+                            {/* Left: Question Area */}
+                            <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
+                                <div className="p-6 md:p-8 overflow-y-auto flex-1">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <span className="bg-brand-100 text-brand-700 px-3 py-1 rounded-lg font-bold text-sm">Soal {currentQIndex + 1}</span>
+                                    </div>
+                                    <p className="text-lg md:text-xl leading-relaxed text-gray-800 mb-8 font-medium">
+                                        {currentQ.text}
+                                    </p>
+                                    
+                                    {/* Options */}
+                                    <div className="space-y-3">
+                                        {currentQ.type === 'mc' && currentQ.options.map((opt, i) => {
+                                            const isSelected = answers[currentQIndex] === opt;
+                                            return (
+                                                <label key={i} className={`flex items-start p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-brand-500 bg-brand-50' : 'border-gray-200 hover:border-brand-200 hover:bg-gray-50'}`}>
+                                                    <div className="flex-shrink-0 mt-0.5">
+                                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-brand-500' : 'border-gray-300'}`}>
+                                                            {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-brand-500" />}
+                                                        </div>
+                                                    </div>
+                                                    <input 
+                                                        type="radio" 
+                                                        name={`q-${currentQIndex}`} 
+                                                        value={opt} 
+                                                        checked={isSelected}
+                                                        onChange={() => setAnswers({...answers, [currentQIndex]: opt})}
+                                                        className="hidden" 
+                                                    />
+                                                    <span className={`ml-3 text-base ${isSelected ? 'text-brand-900 font-semibold' : 'text-gray-700'}`}>{opt}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                
+                                {/* Bottom Navigation */}
+                                <div className="bg-gray-50 border-t border-gray-100 p-4 md:px-8 md:py-5 flex justify-between items-center">
+                                    <button 
+                                        onClick={() => setCurrentQIndex(prev => Math.max(0, prev - 1))}
+                                        disabled={currentQIndex === 0}
+                                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+                                    >
+                                        <Icon name="chevronLeft" className="w-5 h-5" /> Sebelumnya
+                                    </button>
+                                    
+                                    {currentQIndex === questions.length - 1 ? (
+                                        <button onClick={handleManualSubmit} className="flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-white bg-green-500 hover:bg-green-600 shadow-md shadow-green-200 transition-colors">
+                                            <Icon name="check" className="w-5 h-5" /> Selesai
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            onClick={() => setCurrentQIndex(prev => Math.min(questions.length - 1, prev + 1))}
+                                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-md shadow-brand-200 transition-colors"
+                                        >
+                                            Selanjutnya <Icon name="chevronRight" className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Right: Question Navigation Grid */}
+                            <div className="w-full md:w-72 lg:w-80 bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col h-48 md:h-auto">
+                                <h3 className="font-bold text-gray-700 mb-4 text-center border-b pb-2">Navigasi Soal</h3>
+                                <div className="grid grid-cols-5 gap-2 overflow-y-auto no-scrollbar pb-2 flex-1 content-start">
+                                    {questions.map((_, idx) => {
+                                        const isAnswered = answers[idx] !== undefined;
+                                        const isActive = idx === currentQIndex;
+                                        return (
+                                            <button 
+                                                key={idx}
+                                                onClick={() => setCurrentQIndex(idx)}
+                                                className={`
+                                                    h-10 w-full rounded-lg font-bold text-sm transition-all relative
+                                                    ${isAnswered ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}
+                                                    ${isActive ? 'ring-4 ring-brand-300 ring-offset-1 scale-105 z-10' : ''}
+                                                `}
+                                            >
+                                                {idx + 1}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-gray-100 flex gap-4 text-xs font-medium text-gray-500 justify-center">
+                                    <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-green-500"></div> Dijawab</div>
+                                    <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-gray-200"></div> Kosong</div>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                );
+            };
+
+            const renderSubmitting = () => (
+                <div className="flex flex-col items-center justify-center min-h-screen text-white p-4">
+                    <svg className="animate-spin h-12 w-12 text-white mb-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <h2 className="text-2xl font-bold animate-pulse">Menilai & Mengirim Data...</h2>
+                    <p className="text-brand-100 mt-2">Mohon jangan tutup halaman ini.</p>
+                </div>
+            );
+
+            const renderResult = () => (
+                <div className="flex items-center justify-center min-h-screen p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-sm w-full text-center border-t-8 border-brand-500">
+                        <div className="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Icon name="check" className="w-10 h-10" />
+                        </div>
+                        <h2 className="text-3xl font-extrabold text-gray-800 mb-2">Ujian Selesai!</h2>
+                        <p className="text-gray-500 font-medium mb-8">{studentData.nama} • {studentData.kelas}</p>
+                        
+                        <div className="bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-100">
+                            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Skor Akhir</p>
+                            <p className="text-6xl font-black text-brand-600">{score}</p>
+                        </div>
+                        
+                        <p className="text-sm text-gray-500 mb-6 bg-blue-50 text-blue-700 py-2 rounded-lg">{submitMsg}</p>
+                        
+                        <button onClick={() => window.location.reload()} className="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-3.5 rounded-xl transition-colors">
+                            Kembali ke Awal
+                        </button>
+                    </div>
+                </div>
+            );
+
+            return (
+                <React.Fragment>
+                    {appState === 'login' && renderLogin()}
+                    {appState === 'resume_prompt' && renderResumePrompt()}
+                    {appState === 'exam' && renderExam()}
+                    {appState === 'submitting' && renderSubmitting()}
+                    {appState === 'result' && renderResult()}
+                    
+                    {/* Render Modals Outside Main Flow */}
+                    <AlertModal 
+                        show={alertModal.show} 
+                        title={alertModal.title} 
+                        message={alertModal.message} 
+                        isDanger={alertModal.isDanger}
+                        onOk={() => setAlertModal({ show: false })} 
+                    />
+                    <ConfirmModal 
+                        show={confirmModal.show} 
+                        title={confirmModal.title} 
+                        message={confirmModal.message} 
+                        onConfirm={confirmSubmit} 
+                        onCancel={() => setConfirmModal({ show: false })} 
+                    />
+                </React.Fragment>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
